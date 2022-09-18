@@ -7,7 +7,7 @@
 yarn add @msbfe/im-sdk
 ```
 
-## peerDependencies
+## 前置依赖
 
 ```shell
 yarn add @yxim/nim-web-sdk
