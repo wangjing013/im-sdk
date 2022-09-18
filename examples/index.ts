@@ -1,6 +1,6 @@
-import IMSDK from "../src/index";
+import IMSDk from "../src/index";
 
-const chatroom = IMSDK.Chatroom.getInstance({
+const chatroom = IMSDk.Chatroom.getInstance({
   appKey: "", // appkey
   account: "", // 账号
   token: "", // 凭证
@@ -10,5 +10,5 @@ const chatroom = IMSDK.Chatroom.getInstance({
   chatroomAvatar: "", // 头像
 });
 
-console.log(IMSDK.Chatroom);
+console.log(IMSDk.Chatroom);
 console.log(chatroom);

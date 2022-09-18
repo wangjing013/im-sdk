@@ -3,21 +3,43 @@ interface Options {
     appKey: string;
     chatroomId: string;
     chatroomAddresses: string[];
-    account?: string;
-    token?: string;
-    nosScene?: string;
     chatroomNick: string;
     chatroomAvatar: string;
-    chatroomCustom: object;
-    chatroomEnterCustom: object;
-    onconnect: () => {};
-    onerror: () => {};
-    onwillreconnect: (obj: {
+    account: string;
+    token: string;
+    nosScene?: string;
+    chatroomCustom?: object;
+    chatroomEnterCustom?: object;
+    onconnect?: () => void;
+    onerror?: () => void;
+    onwillreconnect?: (obj: {
         duration: number;
         retryCount: number;
-    }) => {};
-    ondisconnect: () => {};
-    onmsgs: () => {};
+    }) => void;
+    ondisconnect?: () => void;
+    onmsgs?: (msgs: Message[]) => void;
+}
+interface Message {
+    chatroomId: string;
+    idClient: number;
+    from: number;
+    fromNick: string;
+    fromAvatar: string;
+    fromCustom: object;
+    fromClientType: keyof typeof DeviceType;
+    type: keyof typeof ChatroomMessageType;
+    flow: keyof typeof MessageFlow;
+    text: string;
+    file: object;
+    geo: object;
+    tip: object;
+    content: object;
+    attach: {
+        type: any;
+    };
+    custom: object;
+    resend: boolean;
+    time: number;
 }
 export declare enum MessageFlow {
     in = "in",
@@ -89,9 +111,11 @@ interface ChatroomInfo {
     mute: boolean;
 }
 declare class Chatroom extends Eventemitter {
-    static instance: NIMRoomchat;
+    chatroom: NIMRoomchat;
+    static instance: Chatroom;
     static EVENTS: typeof ChatroomNotifiyType;
-    static getInstance(options: Options): NIMRoomchat;
+    constructor(options: Options);
+    static getInstance(options: Options): Chatroom;
     setOptions(options: Options): void;
     getChatroom(): Promise<ChatroomInfo | any>;
     connect(): void;
