@@ -12,9 +12,6 @@ module.exports = {
   },
   devServer: {
     port: 8888,
-    static: {
-      directory: path.join(__dirname, "examples"),
-    },
   },
   module: {
     rules: [

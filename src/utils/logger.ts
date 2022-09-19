@@ -1,5 +1,11 @@
 export default {
-  log: console.log,
-  info: console.info,
-  error: console.error,
+  log: (message: string) => {
+    console.log("[nim]:", message);
+  },
+  info: (message: string) => {
+    console.info("[nim]:", message);
+  },
+  error: (message: string) => {
+    console.error("[nim]:", message);
+  },
 };

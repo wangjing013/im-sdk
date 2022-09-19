@@ -2,46 +2,12 @@ import NIM from "@yxim/nim-web-sdk";
 import Eventemitter from "eventemitter3";
 import logger from "./utils/logger";
 
-// 实例化选项
-interface Options {
-  appKey: string; // 在云信管理后台查看应用的 appKey
-  chatroomId: string; // 聊天室 ID
-  chatroomAddresses: string[]; // 聊天室地址
-  chatroomNick: string; // 聊天室昵称
-  chatroomAvatar: string; // 聊天室头像
-  account: string; // 帐号, 应用内唯一
-  token: string; // 帐号的 token, 用于建立连接
-  nosScene?: string; // nos存储场景 默认 chatroom
-  chatroomCustom?: object; // 扩展字段, 设置了之后, 通过获取聊天室成员列表获取的聊天室成员信息会包含此字段
-  chatroomEnterCustom?: object; // 扩展字段, 如果填了, 聊天室成员收到的聊天室通知消息的 attach.custom 的值为此字段
-  onconnect?: () => void;
-  onerror?: () => void;
-  onwillreconnect?: (obj: { duration: number; retryCount: number }) => void;
-  ondisconnect?: () => void;
-  onmsgs?: (msgs: Message[]) => void;
-}
-// 聊天室消息对象
-interface Message {
-  chatroomId: string; // 聊天室
-  idClient: number; // 消息id
-  from: number; // 消息发送方, 帐号
-  fromNick: string; // 消息发送方的昵称
-  fromAvatar: string; // 消息发送方的头像
-  fromCustom: object; // 消息发送方的扩展字段
-  fromClientType: keyof typeof DeviceType;
-  type: keyof typeof ChatroomMessageType;
-  flow: keyof typeof MessageFlow;
-  text: string; // 文本消息的文本内容
-  file: object; //文件消息的文件对象
-  geo: object; // 地理位置消息的地理位置对象
-  tip: object; // 提醒消息的内容
-  content: object; // 自定义消息的消息内容
-  attach: {
-    type: any;
-  }; // 聊天室通知消息的附加信息
-  custom: object; // 附加信息
-  resend: boolean; //  是否是重发的消息
-  time: number;
+export enum MemberType {
+  owner = "owner", // 房主
+  manager = "manager", // 管理员
+  restricted = "restricted", // 受限制(被拉黑或禁言)
+  common = "common", // 普通成员
+  guest = "guest", // 游客
 }
 
 // 消息流向
@@ -93,83 +59,43 @@ export enum ChatroomNotifiyType {
   unmuteRoom = "unmuteRoom", // 聊天室解除禁言
 }
 
-// 聊天室
-interface NIMRoomchat {
-  getChatroom(arg0: {
-    done(error: Error, obj: ChatroomInfo): void;
-  }): Promise<ChatroomInfo | Error>;
-  destroy(options: { done(error: any): any }): Promise<Error | boolean>;
-  connect(): void;
-  setOptions(options: Options): void;
-  disconnect: () => void;
-}
-interface Error {
-  code: number | string;
-  reason?: "chatroomClosed" | "managerKick" | "samePlatformKick";
-  message?: string;
-}
-
-interface ChatroomInfo {
-  id: string; // 聊天室 id
-  name: string; // 聊天室名字
-  announcement: string; // 聊天室公告
-  broadcastUrl: string; // 直播地址
-  custom: object; //第三方扩展字段 推荐使用JSON格式构建, 非JSON格式的话, Web端会正常接收, 但是会被其它端丢弃
-  createTime: number; // 创建时间
-  updateTime: number; // 更新时间
-  creator: number; // 创建者账号
-  onlineMemberNum: number; //当前在线人数
-  mute: boolean; //是否禁言, 禁言状态下普通成员不能发送消息, 创建者和管理员可以发送消息
-}
-
 class Chatroom extends Eventemitter {
-  chatroom: NIMRoomchat;
+  private chatroom: NIMRoomchat;
   static instance: Chatroom;
   static EVENTS = ChatroomNotifiyType;
-  //构建函数
-
   constructor(options: Options) {
     super();
     this.chatroom = NIM.Chatroom.getInstance({
+      ondisconnect(error: Error) {
+        if (error) {
+          switch (error.code) {
+            case 302:
+              logger.error(error.message);
+              break;
+            case "kicked":
+              logger.error("已被踢");
+              break;
+            default:
+              break;
+          }
+        }
+      },
       ...options,
-      onconnect() {},
-      onwillreconnect() {},
-      ondisconnect() {},
-      onerror() {},
-      onmsgs(msgs: Message[]) {
+      onmsgs: (msgs: Message[]) => {
         msgs.forEach((msg: Message) => {
           const type = msg.type;
-          if (type === ChatroomMessageType.text) {
-          } else if (type === ChatroomMessageType.image) {
-          } else if (type === ChatroomMessageType.audio) {
-          } else if (type === ChatroomMessageType.video) {
-          } else if (type === ChatroomMessageType.file) {
-          } else if (type === ChatroomMessageType.geo) {
-          } else if (type === ChatroomMessageType.tip) {
+          if (
+            type === ChatroomMessageType.text ||
+            type === ChatroomMessageType.image ||
+            type === ChatroomMessageType.audio ||
+            type === ChatroomMessageType.video ||
+            type === ChatroomMessageType.file ||
+            type === ChatroomMessageType.geo ||
+            type === ChatroomMessageType.tip
+          ) {
           } else if (type === ChatroomMessageType.notification) {
             const attach = msg.attach;
-            switch (attach.type) {
-              case ChatroomNotifiyType.memberEnter: // 成员进入
-                break;
-              case ChatroomNotifiyType.memberExit: // 成员退出
-                break;
-              case ChatroomNotifiyType.blackMember: // 加入黑名单
-                break;
-              case ChatroomNotifiyType.unblackMember: // 从黑名单移除
-                break;
-              case ChatroomNotifiyType.gagMember: // 禁言
-                break;
-              case ChatroomNotifiyType.ungagMember: // 解除禁言
-                break;
-              case ChatroomNotifiyType.muteRoom: // 聊天室禁言
-                break;
-              case ChatroomNotifiyType.unmuteRoom: // 解除禁言
-                break;
-              case ChatroomNotifiyType.updateChatroom: // 聊天室信息更新
-                break;
-              default:
-                break;
-            }
+            this.emit(attach.type, msg);
           } else if (type === ChatroomMessageType.custom) {
           } else {
             logger.info("未知消息");
@@ -209,14 +135,23 @@ class Chatroom extends Eventemitter {
     });
   }
 
+  //  获取聊天室成员列表
+  getChatroomMembers(options: {
+    guest: boolean;
+    limit: number;
+    done: (error: any, obj: any) => void;
+  }) {
+    this.chatroom.getChatroomMembers(options);
+  }
+
   // 重新连接
   connect(): void {
-    Chatroom.instance.connect();
+    this.chatroom.connect();
   }
 
   // 断开连接
   disconnect(): void {
-    Chatroom.instance.disconnect();
+    this.chatroom.disconnect();
   }
 
   // 清除聊天室
