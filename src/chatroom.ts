@@ -4,6 +4,16 @@ import logger from "./utils/logger";
 
 // 聊天室
 interface NIMRoomchat {
+  getHistoryMsgs(arg0: {
+    timetag: number;
+    limit: number;
+    msgTypes: string[];
+    done: (error: any, obj: any) => void;
+  }): void;
+  sendText(arg: {
+    text: string;
+    done: (error: any, msgObj: Message) => void;
+  }): void;
   getChatroomMembers(options: {
     guest: boolean;
     limit: number;
@@ -237,12 +247,44 @@ class Chatroom extends Eventemitter {
   }
 
   //  获取聊天室成员列表
-  getChatroomMembers(options: {
-    guest: boolean;
-    limit: number;
-    done: (error: any, obj: any) => void;
-  }) {
+  getChatroomMembers(
+    options: {
+      guest: boolean;
+      limit: number;
+      done: (error: any, obj: any) => void;
+    } = { guest: false, limit: 100, done: () => {} }
+  ) {
     this.chatroom.getChatroomMembers(options);
+  }
+
+  // 发送文本消息
+  sendText(text: string) {
+    var msg = this.chatroom.sendText({
+      text: text,
+      done: function sendChatroomMsgDone(error, msgObj: Message) {
+        console.log(msgObj);
+      },
+    });
+    console.log(msg);
+  }
+
+  // 获取历史消息列表
+
+  getHistoryMsgs() {
+    this.chatroom.getHistoryMsgs({
+      timetag: Date.now(),
+      limit: 100,
+      msgTypes: [],
+      done: getHistoryMsgsDone,
+    });
+
+    function getHistoryMsgsDone(error: any, obj: any) {
+      console.log(
+        "获取聊天室历史" + (!error ? "成功" : "失败"),
+        error,
+        obj.msgs
+      );
+    }
   }
 
   // 重新连接
