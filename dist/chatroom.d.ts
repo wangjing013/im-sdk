@@ -1,4 +1,87 @@
 import Eventemitter from "eventemitter3";
+interface Error {
+    cmd: string;
+    code: number | string;
+    message: string;
+    reason?: "chatroomClosed" | "managerKick" | "samePlatformKick";
+    retryCount?: number;
+    willReconnect: boolean;
+}
+interface Options {
+    appKey: string;
+    chatroomId: string;
+    chatroomAddresses: string[];
+    chatroomNick: string;
+    chatroomAvatar: string;
+    account: string;
+    token: string;
+    nosScene?: string;
+    chatroomCustom?: object;
+    chatroomEnterCustom?: object;
+    onconnect?: (obj: ConnectResult) => void;
+    onerror?: (error: any) => void;
+    onwillreconnect?: (obj: {
+        duration: number;
+        retryCount: number;
+    }) => void;
+    ondisconnect?: (obj: any) => void;
+    onmsgs?: (msgs: Message[]) => void;
+}
+interface ChatroomInfo {
+    id: string;
+    name: string;
+    announcement: string;
+    broadcastUrl: string;
+    custom: object;
+    createTime: number;
+    updateTime: number;
+    creator: number;
+    onlineMemberNum: number;
+    mute: boolean;
+    queuelevel: number;
+}
+interface Member {
+    chatroomId: string;
+    account: string;
+    nick: string;
+    avatar: string;
+    type: keyof typeof MemberType;
+    blacked: boolean;
+    gaged: boolean;
+    level: number;
+    online: boolean;
+    enterTime: number;
+    custom: object;
+    updateTime: number;
+    tempMuted: boolean;
+    tempMuteDuration: number;
+}
+interface ConnectResult {
+    chatroom: ChatroomInfo;
+    member: Member;
+}
+interface Message {
+    chatroomId: string;
+    idClient: number;
+    from: number;
+    fromNick: string;
+    fromAvatar: string;
+    fromCustom: object;
+    fromClientType: keyof typeof DeviceType;
+    type: keyof typeof ChatroomMessageType;
+    flow: keyof typeof MessageFlow;
+    text: string;
+    file: object;
+    geo: object;
+    tip: object;
+    content: object;
+    attach: {
+        type: any;
+    };
+    custom: object;
+    resend: boolean;
+    time: number;
+}
 export declare enum MemberType {
     owner = "owner",
     manager = "manager",
