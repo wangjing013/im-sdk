@@ -1,6 +1,10 @@
 <template>
   <a-layout>
     <a-layout-content>
+      <div>
+        <a-button @click="handleUpdate">更新公告信息</a-button>
+        <a-button @click="getAllChatroomMembers">获取成员列表</a-button>
+      </div>
       <div class="warpper">
         <div class="chatroom">
           <div class="top">聊天室</div>
@@ -33,7 +37,7 @@
 </template>
 
 <script lang="ts">
-import Chatroom from "../../src/chatroom";
+import Chatroom, { ChatroomNotifiyType } from "../../src/chatroom";
 
 export default {
   name: "AppComponent",
@@ -41,9 +45,9 @@ export default {
 </script>
 
 <script lang="ts" setup>
-import IMSDk from "../../src/index";
-import { message } from "ant-design-vue";
 import { onBeforeMount, ref } from "vue";
+import { message } from "ant-design-vue";
+import IMSDk from "../../src/index";
 
 const content = ref("");
 const history = ref<any>([]);
@@ -57,39 +61,58 @@ const handleSend = async () => {
 };
 
 const getHistoryMsgs = () => {
-  chatroom!
-    .getAllHistoryMsgs({
-      msgTypes: [],
-    })
-    .then((res: any) => {
-      console.log("history", res);
-      history.value = res;
-    });
+  chatroom.getAllHistoryMsgs().then((res: any) => {
+    console.log("history", res);
+    history.value = res;
+  });
 };
+
+const getAllChatroomMembers = async () => {
+  const res = await chatroom.getAllChatroomMembers();
+  console.log(res);
+};
+
+const handleUpdate = async () => {
+  const [error, obj] = await chatroom.updateChatroom({
+    chatroom: {
+      name: "公告更新",
+      announcement: "公告更新测试",
+    },
+    needNotify: true,
+  });
+  if (error === null) {
+    console.log(obj);
+    message.success("公告更新成功");
+  }
+};
+
 onBeforeMount(() => {
   chatroom = IMSDk.Chatroom.getInstance({
     appKey: "678ddcd03a3225cd7932d2ecef09d246", // appkey
+    chatroomId: "2302150639", // 聊天室
     account: "1", // 账号
     token: "6ad10018fb443cf3851510f812d9bba2", // 凭证
-    chatroomId: "2302150639", // 聊天室
     chatroomAddresses: [
       "chatweblink12.netease.im:443",
       "chatweblink11.netease.im:443",
     ], // 聊天室地址
-    chatroomNick: "张三", // 昵称
-    chatroomAvatar: "", // 头像
+    chatroomNick: "Nets", // 昵称
+    chatroomAvatar: "https://joeschmoe.io/api/v1/random", // 头像
     onconnect(obj) {
       console.log("聊天室:", obj.chatroom);
       console.log("登录账号:", obj.member);
       getHistoryMsgs();
-      chatroom
-        .getAllChatroomMembers({
-          limit: 1,
-        })
-        .then((res) => {
-          console.log(res);
-        });
     },
+  });
+
+  // 成员进入
+  chatroom.addListener(ChatroomNotifiyType.memberEnter, function (res) {
+    console.log("memberEnter", res);
+  });
+
+  // 聊天室信息更新
+  chatroom.addListener(ChatroomNotifiyType.updateChatroom, function (res) {
+    console.log("updateChatroom", res);
   });
 });
 </script>

@@ -4,22 +4,21 @@ import logger from "./utils/logger";
 
 // 聊天室
 interface NIMRoomchat {
-  getHistoryMsgs(arg: {
-    timetag?: number;
-    limit?: number;
-    msgTypes?: string[];
-    done: (error: any, obj: any) => void;
-  }): Promise<[any, any]>;
-  sendText(arg: {
-    text: string;
-    done: (error: any, msgObj: Message) => void;
-  }): void;
-  getChatroomMembers(options: {
-    guest?: boolean;
-    limit?: number;
-    time?: number;
-    done?: (error: any, obj: any) => void;
-  }): unknown;
+  updateChatroom(
+    arg: ChatroomUpdateInfo & {
+      done(error: any, obj: any): void;
+    }
+  ): Promise<[Error | null, ChatroomInfo]>;
+  getHistoryMsgs(
+    arg: HistoryParamsType & {
+      done: (error: any, obj: any) => void;
+    }
+  ): Promise<[any, any]>;
+  getChatroomMembers(
+    options: MemberParamsType & {
+      done?: (error: any, obj: any) => void;
+    }
+  ): Promise<Member[]>;
   getChatroom(arg: {
     done(error: Error, obj: ChatroomInfo): void;
   }): Promise<ChatroomInfo | Error>;
@@ -27,6 +26,10 @@ interface NIMRoomchat {
   connect(): void;
   setOptions(options: Options): void;
   disconnect: () => void;
+  sendText(arg: {
+    text: string;
+    done: (error: any, msgObj: Message) => void;
+  }): void;
 }
 
 interface Error {
@@ -55,20 +58,34 @@ interface Options {
   ondisconnect?: (obj: any) => void;
   onmsgs?: (msgs: Message[]) => void;
 }
+
+// 聊天室信息
 interface ChatroomInfo {
   id: string; // 聊天室 id
-  name: string; // 聊天室名字
-  announcement: string; // 聊天室公告
-  broadcastUrl: string; // 直播地址
-  custom: object; //第三方扩展字段 推荐使用JSON格式构建, 非JSON格式的话, Web端会正常接收, 但是会被其它端丢弃
+  name?: string; // 聊天室名字
+  announcement?: string; // 聊天室公告
+  broadcastUrl?: string; // 直播地址
+  custom?: any; //第三方扩展字段 推荐使用JSON格式构建, 非JSON格式的话, Web端会正常接收, 但是会被其它端丢弃
   createTime: number; // 创建时间
   updateTime: number; // 更新时间
   creator: number; // 创建者账号
   onlineMemberNum: number; //当前在线人数
   mute: boolean; //是否禁言, 禁言状态下普通成员不能发送消息, 创建者和管理员可以发送消息
-  queuelevel: number; // 队列管理权限：0:所有人都有权限变更队列，1:只有主播管理员才能操作变更
+  queuelevel?: number; // 队列管理权限：0:所有人都有权限变更队列，1:只有主播管理员才能操作变更
 }
 
+// 更新聊天室信息
+interface ChatroomUpdateInfo {
+  chatroom: Pick<
+    ChatroomInfo,
+    "name" | "announcement" | "broadcastUrl" | "custom" | "queuelevel"
+  >;
+  needNotify: boolean; // 是否需要下发对应的通知消息
+  custom?: any; // 对应的通知消息的扩展字段
+  needSave?: boolean; // 可选,默认false,是否支持nick,avator和custom字段的持久化（固定成员有效）
+}
+
+// 成员列表
 interface Member {
   chatroomId: string;
   account: string; // 账号
@@ -80,11 +97,12 @@ interface Member {
   level: number; // 级别
   online: boolean; // 是否在线，只有固定成员才能离线, 对游客而言只能是在线
   enterTime: number; // 进入聊天室的时间, 如果离线, 无该字段
-  custom: object; // 扩展字段
+  custom: any; // 扩展字段
   updateTime: number; // 更新时间
   tempMuted: boolean; // 是否被临时禁言
   tempMuteDuration: number; // 临时禁言剩余时长
 }
+
 interface ConnectResult {
   chatroom: ChatroomInfo;
   member: Member;
@@ -201,7 +219,7 @@ class Chatroom extends Eventemitter {
               logger.error(error.message);
               break;
             case "kicked":
-              logger.error("已被踢");
+              logger.error(error.message);
               break;
             default:
               break;
@@ -257,13 +275,25 @@ class Chatroom extends Eventemitter {
       });
     });
   }
+  // 更新聊天室信息
+  updateChatroom(options: ChatroomUpdateInfo): Promise<[Error | null, any]> {
+    return new Promise((resolve) => {
+      this.chatroom.updateChatroom({
+        chatroom: options.chatroom,
+        needNotify: options.needNotify,
+        done(error: any, obj: any) {
+          resolve([error, obj]);
+        },
+      });
+    });
+  }
 
   // 获取所有成员列表
   async getAllChatroomMembers({
     guest = false,
     limit = 100,
     time = 0,
-  }: MemberParamsType): Promise<Member[]> {
+  }: MemberParamsType = {}): Promise<Member[]> {
     let result: Member[] = [];
     const [error, obj] = await this.getChatroomMembers({
       guest,
@@ -291,7 +321,7 @@ class Chatroom extends Eventemitter {
     guest = false,
     limit = 100,
     time = 0,
-  }: MemberParamsType) {
+  }: MemberParamsType = {}) {
     return new Promise<[any, any]>((resolve) => {
       this.chatroom.getChatroomMembers({
         guest,
@@ -309,7 +339,8 @@ class Chatroom extends Eventemitter {
     timetag = Date.now(),
     limit = 100,
     msgTypes = [],
-  }: HistoryParamsType) {
+  }: HistoryParamsType = {}) {
+    console.log(timetag, limit, msgTypes);
     return new Promise<[any, any]>((resolve) => {
       this.chatroom.getHistoryMsgs({
         timetag,
@@ -327,7 +358,7 @@ class Chatroom extends Eventemitter {
     timetag,
     limit,
     msgTypes,
-  }: HistoryParamsType): Promise<Message[]> {
+  }: HistoryParamsType = {}): Promise<Message[]> {
     let result: Message[] = [];
     const [error, obj] = await this.getHistoryMsgs({
       timetag,
