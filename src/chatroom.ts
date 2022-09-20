@@ -4,10 +4,10 @@ import logger from "./utils/logger";
 
 // 聊天室
 interface NIMRoomchat {
-  getHistoryMsgs(arg0: {
-    timetag: number;
-    limit: number;
-    msgTypes: string[];
+  getHistoryMsgs(arg: {
+    timetag?: number;
+    limit?: number;
+    msgTypes?: string[];
     done: (error: any, obj: any) => void;
   }): Promise<[any, any]>;
   sendText(arg: {
@@ -15,11 +15,12 @@ interface NIMRoomchat {
     done: (error: any, msgObj: Message) => void;
   }): void;
   getChatroomMembers(options: {
-    guest: boolean;
-    limit: number;
-    done: (error: any, obj: any) => void;
+    guest?: boolean;
+    limit?: number;
+    time?: number;
+    done?: (error: any, obj: any) => void;
   }): unknown;
-  getChatroom(arg0: {
+  getChatroom(arg: {
     done(error: Error, obj: ChatroomInfo): void;
   }): Promise<ChatroomInfo | Error>;
   destroy(options: { done(error: any): any }): Promise<Error | boolean>;
@@ -41,10 +42,10 @@ interface Options {
   appKey: string; // 在云信管理后台查看应用的 appKey
   chatroomId: string; // 聊天室 ID
   chatroomAddresses: string[]; // 聊天室地址
-  chatroomNick: string; // 聊天室昵称
-  chatroomAvatar: string; // 聊天室头像
   account: string; // 帐号, 应用内唯一
   token: string; // 帐号的 token, 用于建立连接
+  chatroomNick: string; // 聊天室昵称
+  chatroomAvatar: string; // 聊天室头像
   nosScene?: string; // nos存储场景 默认 chatroom
   chatroomCustom?: object; // 扩展字段, 设置了之后, 通过获取聊天室成员列表获取的聊天室成员信息会包含此字段
   chatroomEnterCustom?: object; // 扩展字段, 如果填了, 聊天室成员收到的聊天室通知消息的 attach.custom 的值为此字段
@@ -114,6 +115,20 @@ interface Message {
   custom: object; // 附加信息
 }
 
+// 查看历史消息入参类型
+type HistoryParamsType = {
+  timetag?: number;
+  limit?: number;
+  msgTypes?: string[];
+};
+
+// 查看成员的入参
+type MemberParamsType = {
+  guest?: boolean;
+  limit?: number;
+  time?: number;
+};
+
 export enum MemberType {
   owner = "owner", // 房主
   manager = "manager", // 管理员
@@ -150,7 +165,7 @@ export enum ChatroomMessageType {
   notification = "notification", // 聊天室通知消息
 }
 
-// 聊天室通知消息类型
+// 聊天室通知类型消息
 export enum ChatroomNotifiyType {
   memberEnter = "memberEnter", // 当有人进入聊天室时
   memberExit = "memberExit", // 当有人退出聊天室时
@@ -172,12 +187,13 @@ export enum ChatroomNotifiyType {
 }
 
 class Chatroom extends Eventemitter {
-  private chatroom: NIMRoomchat;
   static instance: Chatroom;
   static EVENTS = ChatroomNotifiyType;
+  chatroom: NIMRoomchat;
   constructor(options: Options) {
     super();
     this.chatroom = NIM.Chatroom.getInstance({
+      ...options,
       ondisconnect(error: Error) {
         if (error) {
           switch (error.code) {
@@ -192,9 +208,7 @@ class Chatroom extends Eventemitter {
           }
         }
       },
-      ...options,
       onmsgs: (msgs: Message[]) => {
-        console.log("======");
         msgs.forEach((msg: Message) => {
           const type = msg.type;
           if (
@@ -206,7 +220,6 @@ class Chatroom extends Eventemitter {
             type === ChatroomMessageType.geo ||
             type === ChatroomMessageType.tip
           ) {
-            console.log("======");
           } else if (type === ChatroomMessageType.notification) {
             const attach = msg.attach;
             this.emit(attach.type, msg);
@@ -221,7 +234,7 @@ class Chatroom extends Eventemitter {
 
   //获取实例
   static getInstance(options: Options) {
-    if (Chatroom.instance === undefined) {
+    if (!Chatroom.instance) {
       Chatroom.instance = new Chatroom({
         ...options,
       });
@@ -235,49 +248,68 @@ class Chatroom extends Eventemitter {
   }
 
   // 获取聊天室信息
-  getChatroom(): Promise<ChatroomInfo | any> {
-    return new Promise((resolve, reject) => {
+  getChatroom(): Promise<[Error | null, ChatroomInfo]> {
+    return new Promise((resolve) => {
       this.chatroom.getChatroom({
         done(error: Error, obj: ChatroomInfo) {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(obj);
-          }
+          resolve([error, obj]);
         },
       });
     });
   }
 
-  //  获取聊天室成员列表
-  getChatroomMembers(
-    options: {
-      guest: boolean;
-      limit: number;
-      done: (error: any, obj: any) => void;
-    } = { guest: false, limit: 100, done: () => {} }
-  ) {
-    this.chatroom.getChatroomMembers(options);
+  // 获取所有成员列表
+  async getAllChatroomMembers({
+    guest = false,
+    limit = 100,
+    time = 0,
+  }: MemberParamsType): Promise<Member[]> {
+    let result: Member[] = [];
+    const [error, obj] = await this.getChatroomMembers({
+      guest,
+      limit,
+      time,
+    });
+    if (error === null) {
+      const members = obj.members;
+      if (members.length >= obj.limit) {
+        const arr = await this.getAllChatroomMembers({
+          guest,
+          limit: obj.limit,
+          time: members[members.length - 1].updateTime,
+        });
+        result = [...members, ...arr];
+      } else {
+        result = [...members];
+      }
+    }
+    return result;
   }
 
-  // 发送文本消息
-  sendText(text: string) {
-    this.chatroom.sendText({
-      text: text,
-      done: function sendChatroomMsgDone(error, msgObj: Message) {
-        console.log(msgObj);
-      },
+  //  获取聊天室成员列表
+  getChatroomMembers({
+    guest = false,
+    limit = 100,
+    time = 0,
+  }: MemberParamsType) {
+    return new Promise<[any, any]>((resolve) => {
+      this.chatroom.getChatroomMembers({
+        guest,
+        limit,
+        time,
+        done(error, obj) {
+          resolve([error, obj]);
+        },
+      });
     });
   }
 
   // 获取历史消息列表
-  getHistoryMsgs(
-    { timetag, limit, msgTypes } = {
-      timetag: Date.now(),
-      limit: 10,
-      msgTypes: [],
-    }
-  ) {
+  getHistoryMsgs({
+    timetag = Date.now(),
+    limit = 100,
+    msgTypes = [],
+  }: HistoryParamsType) {
     return new Promise<[any, any]>((resolve) => {
       this.chatroom.getHistoryMsgs({
         timetag,
@@ -291,13 +323,11 @@ class Chatroom extends Eventemitter {
   }
 
   // 获取全部历史记录
-  async getAllHistoryMsgs(
-    { timetag, limit, msgTypes } = {
-      timetag: Date.now(),
-      limit: 10,
-      msgTypes: [],
-    }
-  ): Promise<Message[]> {
+  async getAllHistoryMsgs({
+    timetag,
+    limit,
+    msgTypes,
+  }: HistoryParamsType): Promise<Message[]> {
     let result: Message[] = [];
     const [error, obj] = await this.getHistoryMsgs({
       timetag,
@@ -306,11 +336,11 @@ class Chatroom extends Eventemitter {
     });
     if (error === null) {
       const msgs = obj.msgs;
-      if (msgs.length >= limit) {
+      if (msgs.length >= obj.limit) {
         const arr = await this.getAllHistoryMsgs({
-          timetag: msgs[msgs.length - 1].time,
           limit,
-          msgTypes: [],
+          msgTypes,
+          timetag: msgs[msgs.length - 1].time,
         });
         result = [...msgs, ...arr];
       } else {
@@ -318,6 +348,18 @@ class Chatroom extends Eventemitter {
       }
     }
     return result;
+  }
+
+  // 发送文本消息
+  sendText(text: string): Promise<[error: Error, msgObj: Message]> {
+    return new Promise((resolve) => {
+      this.chatroom.sendText({
+        text: text,
+        done(error, msgObj: Message) {
+          resolve([error, msgObj]);
+        },
+      });
+    });
   }
 
   // 重新连接
@@ -335,11 +377,7 @@ class Chatroom extends Eventemitter {
     return new Promise((resolve, reject) => {
       this.chatroom.destroy({
         done(error: Error) {
-          if (error) {
-            resolve([error]);
-          } else {
-            resolve([null]);
-          }
+          resolve([error]);
         },
       });
     });

@@ -5,14 +5,19 @@
         <div class="chatroom">
           <div class="top">聊天室</div>
           <div class="chatroom-main">
-            <div class="members">
-              <div class="member">张三</div>
-              <div class="member">李四</div>
-              <div class="member">王五</div>
-              <div class="member">赵六</div>
-            </div>
+            <div class="members"></div>
             <div class="chat-warpper">
-              <div class="chat-list"></div>
+              <div class="chat-list">
+                <div
+                  class="chat-item"
+                  v-for="item of history"
+                  :key="item.idClient"
+                >
+                  <a-avatar :src="item.fromAvatar" />
+                  <span class="nickname">{{ item.fromNick }}:</span>
+                  <span classs="content">{{ item.text }}</span>
+                </div>
+              </div>
               <div class="chat-footer">
                 <div class="chat-message-input-wrap">
                   <a-textarea v-model:value="content" />
@@ -28,6 +33,8 @@
 </template>
 
 <script lang="ts">
+import Chatroom from "../../src/chatroom";
+
 export default {
   name: "AppComponent",
 };
@@ -35,17 +42,29 @@ export default {
 
 <script lang="ts" setup>
 import IMSDk from "../../src/index";
+import { message } from "ant-design-vue";
 import { onBeforeMount, ref } from "vue";
-let chatroom: any = null;
+
 const content = ref("");
-const handleSend = () => {
-  chatroom.sendText(content.value);
+const history = ref<any>([]);
+let chatroom: Chatroom;
+const handleSend = async () => {
+  const [error, msg] = await chatroom.sendText(content.value);
+  if (error === null) {
+    message.success("发送成功");
+    content.value = "";
+  }
 };
 
 const getHistoryMsgs = () => {
-  chatroom.getAllHistoryMsgs().then((res: any) => {
-    console.log(res);
-  });
+  chatroom!
+    .getAllHistoryMsgs({
+      msgTypes: [],
+    })
+    .then((res: any) => {
+      console.log("history", res);
+      history.value = res;
+    });
 };
 onBeforeMount(() => {
   chatroom = IMSDk.Chatroom.getInstance({
@@ -57,12 +76,19 @@ onBeforeMount(() => {
       "chatweblink12.netease.im:443",
       "chatweblink11.netease.im:443",
     ], // 聊天室地址
-    chatroomNick: "", // 昵称
+    chatroomNick: "张三", // 昵称
     chatroomAvatar: "", // 头像
     onconnect(obj) {
       console.log("聊天室:", obj.chatroom);
       console.log("登录账号:", obj.member);
       getHistoryMsgs();
+      chatroom
+        .getAllChatroomMembers({
+          limit: 1,
+        })
+        .then((res) => {
+          console.log(res);
+        });
     },
   });
 });
@@ -102,6 +128,7 @@ onBeforeMount(() => {
   }
   &-main {
     display: flex;
+    height: 619px;
     flex-direction: row;
     flex: 1;
     .members {
@@ -118,6 +145,7 @@ onBeforeMount(() => {
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
         align-items: center;
+        padding: 12px;
       }
     }
     .chat-warpper {
@@ -129,6 +157,14 @@ onBeforeMount(() => {
       .chat-list {
         width: 100%;
         flex: 1;
+        overflow: auto;
+        .chat-item {
+          padding: 6px 12px;
+          .nickname {
+            padding-left: 5px;
+            padding-right: 10px;
+          }
+        }
       }
       .chat-footer {
         padding: 16px;
