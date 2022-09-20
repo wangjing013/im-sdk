@@ -1,23 +1,25 @@
 # IM-SDK
 
-## 安装
+## 1. 安装
 
 ```shell
 yarn add @msbfe/im-sdk
 ```
 
-## 前置依赖
+## 2. 前置依赖
 
 ```shell
 yarn add @yxim/nim-web-sdk
+
+// or
+
 npm i @yxim/nim-web-sdk
 ```
 
-## 功能
 
-### 初始化
-
+## 3. 初始化
 ```ts
+import IMSDK from '@msbfe/im-sdk'
 const chatroom = IMSDk.Chatroom.getInstance({
   appKey: "678ddcd03a3225cd7932d2ecef09d246", // appkey
   account: "1", // 账号
@@ -29,29 +31,32 @@ const chatroom = IMSDk.Chatroom.getInstance({
   ], // 聊天室地址
   chatroomNick: "", // 昵称
   chatroomAvatar: "", // 头像
-  onconnect() {
-    chatroom.getChatroom().then(
-      (roominfo) => {
-        console.log(roominfo);
-      },
-      (error) => console.log(error)
-    );
+  onconnect(obj) {
+    console.log(obj.chatroom)
+    console.log(obj.member)
   },
 });
 ```
 
-### 获取聊天室信息
+## 4. 功能
 
-```json
-chatroom.getChatroom().then(
-    (roominfo) => {
-        console.log(roominfo);
-    },
-    (error) => console.log(error)
-);
-```
-
-### 获取成员列表
-### 发送消息
-
+* 登录
+* 查询聊天室信息
+* 修改聊天室信息
+* 进入聊天室
+* 退出聊天室
+* 查询在线人数(总共、离线、在线、游客)
+* 查询成员列表
+* 全部历史消息
+* 分页查询历史消息
+* 发送文本消息
+* 发送图片消息
+* 接收聊天室消息
+* 禁言(发、收)
+* 踢出(发、收)
+* 拉黑(发、收)
+* 上报观看时长
+* 记录发言次数
+* 快捷添加严禁词
+* 备注
 

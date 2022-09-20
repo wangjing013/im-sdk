@@ -194,6 +194,7 @@ class Chatroom extends Eventemitter {
       },
       ...options,
       onmsgs: (msgs: Message[]) => {
+        console.log("======");
         msgs.forEach((msg: Message) => {
           const type = msg.type;
           if (
