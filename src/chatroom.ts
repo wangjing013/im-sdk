@@ -9,7 +9,7 @@ interface NIMRoomchat {
     limit: number;
     msgTypes: string[];
     done: (error: any, obj: any) => void;
-  }): void;
+  }): Promise<[any, any]>;
   sendText(arg: {
     text: string;
     done: (error: any, msgObj: Message) => void;
@@ -100,17 +100,18 @@ interface Message {
   fromClientType: keyof typeof DeviceType;
   type: keyof typeof ChatroomMessageType;
   flow: keyof typeof MessageFlow;
-  text: string; // 文本消息的文本内容
-  file: object; //文件消息的文件对象
-  geo: object; // 地理位置消息的地理位置对象
-  tip: object; // 提醒消息的内容
-  content: object; // 自定义消息的消息内容
+  resend: boolean; //  是否是重发的消息
+  time: number; // 发送时间
+
+  text?: string; // 文本消息的文本内容
+  file?: object; //文件消息的文件对象
+  geo?: object; // 地理位置消息的地理位置对象
+  tip?: object; // 提醒消息的内容
+  content?: object; // 自定义消息的消息内容
   attach: {
     type: any;
   }; // 聊天室通知消息的附加信息
   custom: object; // 附加信息
-  resend: boolean; //  是否是重发的消息
-  time: number;
 }
 
 export enum MemberType {
@@ -204,6 +205,7 @@ class Chatroom extends Eventemitter {
             type === ChatroomMessageType.geo ||
             type === ChatroomMessageType.tip
           ) {
+            console.log("======");
           } else if (type === ChatroomMessageType.notification) {
             const attach = msg.attach;
             this.emit(attach.type, msg);
@@ -259,32 +261,62 @@ class Chatroom extends Eventemitter {
 
   // 发送文本消息
   sendText(text: string) {
-    var msg = this.chatroom.sendText({
+    this.chatroom.sendText({
       text: text,
       done: function sendChatroomMsgDone(error, msgObj: Message) {
         console.log(msgObj);
       },
     });
-    console.log(msg);
   }
 
   // 获取历史消息列表
-
-  getHistoryMsgs() {
-    this.chatroom.getHistoryMsgs({
+  getHistoryMsgs(
+    { timetag, limit, msgTypes } = {
       timetag: Date.now(),
-      limit: 100,
+      limit: 10,
       msgTypes: [],
-      done: getHistoryMsgsDone,
-    });
-
-    function getHistoryMsgsDone(error: any, obj: any) {
-      console.log(
-        "获取聊天室历史" + (!error ? "成功" : "失败"),
-        error,
-        obj.msgs
-      );
     }
+  ) {
+    return new Promise<[any, any]>((resolve) => {
+      this.chatroom.getHistoryMsgs({
+        timetag,
+        limit,
+        msgTypes,
+        done(error: any, obj: any) {
+          resolve([error, obj]);
+        },
+      });
+    });
+  }
+
+  // 获取全部历史记录
+  async getAllHistoryMsgs(
+    { timetag, limit, msgTypes } = {
+      timetag: Date.now(),
+      limit: 10,
+      msgTypes: [],
+    }
+  ): Promise<Message[]> {
+    let result: Message[] = [];
+    const [error, obj] = await this.getHistoryMsgs({
+      timetag,
+      limit,
+      msgTypes,
+    });
+    if (error === null) {
+      const msgs = obj.msgs;
+      if (msgs.length >= limit) {
+        const arr = await this.getAllHistoryMsgs({
+          timetag: msgs[msgs.length - 1].time,
+          limit,
+          msgTypes: [],
+        });
+        result = [...msgs, ...arr];
+      } else {
+        result = [...msgs];
+      }
+    }
+    return result;
   }
 
   // 重新连接
@@ -298,14 +330,14 @@ class Chatroom extends Eventemitter {
   }
 
   // 清除聊天室
-  destroy(): Promise<Error | boolean> {
+  destroy(): Promise<[Error | null]> {
     return new Promise((resolve, reject) => {
       this.chatroom.destroy({
         done(error: Error) {
           if (error) {
-            reject(error);
+            resolve([error]);
           } else {
-            resolve(true);
+            resolve([null]);
           }
         },
       });

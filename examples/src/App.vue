@@ -1,47 +1,47 @@
 <template>
   <a-layout>
-    <a-layout>
-      <a-layout-content>
-        <div class="warpper">
-          <div class="chatroom">
-            <div class="top">聊天室</div>
-            <div class="chatroom-main">
-              <div class="members">
-                <div class="member">张三</div>
-                <div class="member">李四</div>
-                <div class="member">王五</div>
-                <div class="member">赵六</div>
-              </div>
-              <div class="chat-warpper">
-                <div class="chat-list"></div>
-                <div class="chat-footer">
-                  <div class="chat-message-input-wrap">
-                    <a-textarea v-model:value="content" />
-                    <a-button type="primary" @click="handleSend">发送</a-button>
-                  </div>
+    <a-layout-content>
+      <div class="warpper">
+        <div class="chatroom">
+          <div class="top">聊天室</div>
+          <div class="chatroom-main">
+            <div class="members">
+              <div class="member">张三</div>
+              <div class="member">李四</div>
+              <div class="member">王五</div>
+              <div class="member">赵六</div>
+            </div>
+            <div class="chat-warpper">
+              <div class="chat-list"></div>
+              <div class="chat-footer">
+                <div class="chat-message-input-wrap">
+                  <a-textarea v-model:value="content" />
+                  <a-button type="primary" @click="handleSend">发送</a-button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </a-layout-content>
-    </a-layout>
+      </div>
+    </a-layout-content>
   </a-layout>
 </template>
 
-<script>
+<script lang="ts">
 import { onMounted, ref } from "vue";
 import IMSDk from "../../src/index";
 export default {
   setup() {
-    let chatroom = null;
+    let chatroom: any = null;
     const content = ref("");
     const handleSend = () => {
       console.log(chatroom.sendText(content.value));
     };
 
     const getHistoryMsgs = () => {
-      chatroom.getHistoryMsgs();
+      chatroom.getAllHistoryMsgs().then((res: any) => {
+        console.log(res);
+      });
     };
     onMounted(() => {
       chatroom = IMSDk.Chatroom.getInstance({
@@ -74,6 +74,7 @@ export default {
 
 <style lang="scss">
 #app {
+  width: 100%;
   height: 100%;
 }
 .ant-layout {

@@ -70,17 +70,17 @@ interface Message {
     fromClientType: keyof typeof DeviceType;
     type: keyof typeof ChatroomMessageType;
     flow: keyof typeof MessageFlow;
-    text: string;
-    file: object;
-    geo: object;
-    tip: object;
-    content: object;
+    resend: boolean;
+    time: number;
+    text?: string;
+    file?: object;
+    geo?: object;
+    tip?: object;
+    content?: object;
     attach: {
         type: any;
     };
     custom: object;
-    resend: boolean;
-    time: number;
 }
 export declare enum MemberType {
     owner = "owner",
@@ -138,13 +138,24 @@ declare class Chatroom extends Eventemitter {
     static getInstance(options: Options): Chatroom;
     setOptions(options: Options): void;
     getChatroom(): Promise<ChatroomInfo | any>;
-    getChatroomMembers(options: {
+    getChatroomMembers(options?: {
         guest: boolean;
         limit: number;
         done: (error: any, obj: any) => void;
     }): void;
+    sendText(text: string): void;
+    getHistoryMsgs({ timetag, limit, msgTypes }?: {
+        timetag: number;
+        limit: number;
+        msgTypes: never[];
+    }): Promise<[any, any]>;
+    getAllHistoryMsgs({ timetag, limit, msgTypes }?: {
+        timetag: number;
+        limit: number;
+        msgTypes: never[];
+    }): Promise<Message[]>;
     connect(): void;
     disconnect(): void;
-    destroy(): Promise<Error | boolean>;
+    destroy(): Promise<[Error | null]>;
 }
 export default Chatroom;
