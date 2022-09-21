@@ -4,6 +4,18 @@ import logger from "./utils/logger";
 
 // 聊天室
 interface NIMRoomchat {
+  updateChatroomMemberTempMute(arg: {
+    account: string;
+    duration: number;
+    needNotify: boolean;
+    custom: string;
+    done(error: any, obj: any): void;
+  }): void;
+  markChatroomGaglist(arg: {
+    account: string;
+    isAdd?: boolean;
+    done: (error: any, obj: any) => void;
+  }): Promise<[any, any]>;
   updateChatroom(
     arg: ChatroomUpdateInfo & {
       done(error: any, obj: any): void;
@@ -30,6 +42,7 @@ interface NIMRoomchat {
     text: string;
     done: (error: any, msgObj: Message) => void;
   }): void;
+  sendFile(arg: UploadFileParams): void;
 }
 
 interface Error {
@@ -134,18 +147,19 @@ export interface Message {
 }
 
 // 查看历史消息入参类型
-type HistoryParamsType = {
+interface HistoryParamsType {
   timetag?: number;
   limit?: number;
+  reverse?: boolean;
   msgTypes?: string[];
-};
+}
 
 // 查看成员的入参
-type MemberParamsType = {
+interface MemberParamsType {
   guest?: boolean;
   limit?: number;
   time?: number;
-};
+}
 
 export enum MemberType {
   owner = "owner", // 房主
@@ -178,10 +192,34 @@ export enum ChatroomMessageType {
   video = "video", // 视频
   file = "file", // 文件
   geo = "geo", // 地理位置
-  custom = "custom", // 自定义消息
   tip = "tip", // 提醒消息
   notification = "notification", // 聊天室通知消息
+  custom = "custom", // 自定义消息
 }
+
+// 上传文件类型
+type UploadFileType = "image" | "audio" | "video" | "file";
+// 文件输入类型
+type FileInput = Blob | HTMLInputElement | string; // string base64
+// 上传进度
+type Progress = {
+  total: number;
+  loaded: number;
+  percentage: number;
+  percentageText: string;
+};
+
+// 上传文件参数
+interface UploadFileParams {
+  type?: UploadFileType;
+  fileInput: FileInput;
+  uploadprogress: (obj: Progress) => {};
+  uploaddone: (error: any, file: any) => {};
+  beforesend: (msg: Message) => {};
+  done: (error: any, msg: Message) => {};
+}
+
+//
 
 // 聊天室通知类型消息
 export enum ChatroomNotifiyType {
@@ -204,21 +242,34 @@ export enum ChatroomNotifiyType {
   unmuteRoom = "unmuteRoom", // 聊天室解除禁言
 }
 
+// 自定义事件
+export enum CustomEventType {
+  normal = "normal",
+  loginFail = "loginFail",
+  kicked = "kicked",
+}
+
 class Chatroom extends Eventemitter {
   static instance: Chatroom;
-  static EVENTS = ChatroomNotifiyType;
+  static EVENTS = {
+    ...ChatroomNotifiyType,
+    ...ChatroomMessageType,
+    ...CustomEventType,
+  };
   chatroom: NIMRoomchat;
   constructor(options: Options) {
     super();
     this.chatroom = NIM.Chatroom.getInstance({
       ...options,
-      ondisconnect(error: Error) {
+      ondisconnect: (error: Error) => {
         if (error) {
           switch (error.code) {
             case 302:
+              this.emit(CustomEventType.loginFail, error);
               logger.error(error.message);
               break;
             case "kicked":
+              this.emit(CustomEventType.kicked, error);
               logger.error(error.message);
               break;
             default:
@@ -235,13 +286,16 @@ class Chatroom extends Eventemitter {
             type === ChatroomMessageType.audio ||
             type === ChatroomMessageType.video ||
             type === ChatroomMessageType.file ||
-            type === ChatroomMessageType.geo ||
-            type === ChatroomMessageType.tip
+            type === ChatroomMessageType.geo
           ) {
+            this.emit(CustomEventType.normal, msg);
+          } else if (type === ChatroomMessageType.tip) {
+            this.emit(ChatroomMessageType.tip, msg);
           } else if (type === ChatroomMessageType.notification) {
             const attach = msg.attach;
             this.emit(attach.type, msg);
           } else if (type === ChatroomMessageType.custom) {
+            this.emit(ChatroomMessageType.custom, msg);
           } else {
             logger.info("未知消息");
           }
@@ -279,8 +333,7 @@ class Chatroom extends Eventemitter {
   updateChatroom(options: ChatroomUpdateInfo): Promise<[Error | null, any]> {
     return new Promise((resolve) => {
       this.chatroom.updateChatroom({
-        chatroom: options.chatroom,
-        needNotify: options.needNotify,
+        ...options,
         done(error: any, obj: any) {
           resolve([error, obj]);
         },
@@ -338,12 +391,14 @@ class Chatroom extends Eventemitter {
   getHistoryMsgs({
     timetag = Date.now(),
     limit = 100,
+    reverse = false,
     msgTypes = [],
   }: HistoryParamsType = {}) {
     return new Promise<[any, any]>((resolve) => {
       this.chatroom.getHistoryMsgs({
         timetag,
         limit,
+        reverse,
         msgTypes,
         done(error: any, obj: any) {
           resolve([error, obj]);
@@ -387,6 +442,69 @@ class Chatroom extends Eventemitter {
         text: text,
         done(error, msgObj: Message) {
           resolve([error, msgObj]);
+        },
+      });
+    });
+  }
+
+  // 发送文件
+  sendFile({
+    type = "file",
+    fileInput,
+    uploadprogress,
+    uploaddone,
+    beforesend,
+    done,
+  }: UploadFileParams) {
+    this.chatroom.sendFile({
+      type,
+      fileInput,
+      uploadprogress,
+      uploaddone,
+      beforesend,
+      done,
+    });
+  }
+
+  // 聊天室添加禁言、解除禁言
+  markChatroomGaglist({
+    account,
+    isAdd = true,
+  }: {
+    account: string;
+    isAdd: boolean;
+  }) {
+    return new Promise<[any, any]>((resolve) => {
+      this.chatroom.markChatroomGaglist({
+        account,
+        isAdd,
+        done: (error: any, obj: any) => {
+          resolve([error, obj]);
+        },
+      });
+    });
+  }
+
+  // 聊天室临时禁言、解除禁言
+  updateChatroomMemberTempMute({
+    account,
+    duration,
+    needNotify = false,
+    custom = "",
+  }: {
+    account: string;
+    duration: number;
+    needNotify?: boolean;
+    custom?: string;
+  }) {
+    return new Promise<[any, any]>((resolve) => {
+      this.chatroom.updateChatroomMemberTempMute({
+        account,
+        duration,
+        needNotify,
+        custom,
+        done(error: any, obj: any) {
+          resolve([error, obj]);
         },
       });
     });

@@ -2,8 +2,10 @@
   <a-layout>
     <a-layout-content>
       <div>
-        <a-button @click="handleUpdate">更新公告信息</a-button>
         <a-button @click="getAllChatroomMembers">获取成员列表</a-button>
+        <a-button @click="handleUpdate">更新公告信息</a-button>
+        <a-button @click="handleMute">单个聊天室禁言</a-button>
+        <a-button @click="handleLeave">退出聊天室</a-button>
       </div>
       <div class="warpper">
         <div class="chatroom">
@@ -41,7 +43,12 @@
 </template>
 
 <script lang="ts">
-import Chatroom, { ChatroomNotifiyType, Member } from "../../../src/chatroom";
+import Chatroom, {
+  ChatroomNotifiyType,
+  Member,
+  Message,
+} from "../../../src/chatroom";
+import { useRoute } from "vue-router";
 export default {
   name: "HomeComponent",
 };
@@ -52,6 +59,7 @@ import { onBeforeMount, ref } from "vue";
 import { message } from "ant-design-vue";
 import IMSDk from "../../../src/index";
 
+const route = useRoute();
 const content = ref("");
 const history = ref<any>([]);
 const members = ref<Member[]>([]);
@@ -66,7 +74,7 @@ const handleSend = async () => {
 };
 
 const getHistoryMsgs = () => {
-  chatroom.getAllHistoryMsgs().then((res: any) => {
+  chatroom.getAllHistoryMsgs().then((res: Message[]) => {
     console.log("history", res);
     history.value = res;
   });
@@ -74,6 +82,7 @@ const getHistoryMsgs = () => {
 
 const getAllChatroomMembers = async () => {
   const res = await chatroom.getAllChatroomMembers();
+  console.log("getAllChatroomMembers", res);
   members.value = res;
 };
 
@@ -84,6 +93,9 @@ const handleUpdate = async () => {
       announcement: "公告更新测试",
     },
     needNotify: true,
+    custom: JSON.stringify({
+      announcement: "公告更新测试",
+    }),
   });
   if (error === null) {
     console.log(obj);
@@ -91,18 +103,30 @@ const handleUpdate = async () => {
   }
 };
 
+const handleMute = async () => {
+  const [error, result] = await chatroom.markChatroomGaglist({
+    account: "3",
+    isAdd: true,
+  });
+  console.log(error, result);
+};
+const handleLeave = async () => {
+  chatroom.disconnect();
+};
+
 onBeforeMount(() => {
+  const { token, account } = route.query;
   chatroom = IMSDk.Chatroom.getInstance({
+    account: account as string, // 账号
+    token: token as string, // 凭证
     appKey: "678ddcd03a3225cd7932d2ecef09d246", // appkey
     chatroomId: "2302150639", // 聊天室
-    account: "1", // 账号
-    token: "6ad10018fb443cf3851510f812d9bba2", // 凭证
     chatroomAddresses: [
       "chatweblink12.netease.im:443",
       "chatweblink11.netease.im:443",
     ], // 聊天室地址
-    chatroomNick: "Nets", // 昵称
-    chatroomAvatar: "https://joeschmoe.io/api/v1/random", // 头像
+    chatroomNick: "", // 昵称
+    chatroomAvatar: "", // 头像
     onconnect(obj) {
       console.log("聊天室:", obj.chatroom);
       console.log("登录账号:", obj.member);
@@ -111,13 +135,20 @@ onBeforeMount(() => {
   });
 
   // 成员进入
-  chatroom.addListener(ChatroomNotifiyType.memberEnter, function (res) {
+  chatroom.addListener(Chatroom.EVENTS.memberEnter, function (res) {
     console.log("memberEnter", res);
+    message.info(`[${res.attach.fromNick}] 进入聊天室`);
   });
 
   // 聊天室信息更新
-  chatroom.addListener(ChatroomNotifiyType.updateChatroom, function (res) {
+  chatroom.addListener(Chatroom.EVENTS.updateChatroom, function (res) {
     console.log("updateChatroom", res);
+  });
+
+  // 离开聊天
+  chatroom.addListener(Chatroom.EVENTS.memberExit, function (res) {
+    console.log("memberExit", res);
+    message.info(`[${res.attach.fromNick}] 离开聊天室`);
   });
 });
 </script>
