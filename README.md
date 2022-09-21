@@ -61,7 +61,7 @@ const chatroom = IMSDk.Chatroom.getInstance({
 * 备注
 
 
-### 登录
+### 4.1 登录
 
 ```ts
   const chatroom = IMSDk.Chatroom.getInstance({
@@ -81,7 +81,7 @@ const chatroom = IMSDk.Chatroom.getInstance({
     },
   });
 ```
-### 查询聊天室信息
+### 4.2 查询聊天室信息
 ```ts
   const [error, obj] = await chatroom.getChatroom();
   if(!error){
@@ -89,7 +89,7 @@ const chatroom = IMSDk.Chatroom.getInstance({
   }
 ```
 
-### 修改聊天室信息
+### 4.3 修改聊天室信息
 ```ts
   const [error, obj] = await chatroom.updateChatroom({
     chatroom: {
@@ -103,14 +103,14 @@ const chatroom = IMSDk.Chatroom.getInstance({
   }
 ```
 
-### 获取全部成员列表
+### 4.4 获取全部成员列表
 
 ```ts
   const members = await chatroom.getAllChatroomMembers();
   console.log(members);
 ```
 
-### 分页获取成员列表
+### 4.5 分页获取成员列表
 
 ```ts
   const [error, members] = await chatroom.getChatroomMembers({

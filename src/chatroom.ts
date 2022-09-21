@@ -86,7 +86,7 @@ interface ChatroomUpdateInfo {
 }
 
 // 成员列表
-interface Member {
+export interface Member {
   chatroomId: string;
   account: string; // 账号
   nick: string; // 昵称
@@ -109,7 +109,7 @@ interface ConnectResult {
 }
 
 // 聊天室消息对象
-interface Message {
+export interface Message {
   chatroomId: string; // 聊天室
   idClient: number; // 消息id
   from: number; // 消息发送方, 帐号
