@@ -340,7 +340,6 @@ class Chatroom extends Eventemitter {
     limit = 100,
     msgTypes = [],
   }: HistoryParamsType = {}) {
-    console.log(timetag, limit, msgTypes);
     return new Promise<[any, any]>((resolve) => {
       this.chatroom.getHistoryMsgs({
         timetag,
