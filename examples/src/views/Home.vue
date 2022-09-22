@@ -2,10 +2,13 @@
   <a-layout>
     <a-layout-content>
       <div>
+        <input id="test" type="file" />
+        <a-button @click="handleUpload">上传</a-button>
         <a-button @click="getAllChatroomMembers">获取成员列表</a-button>
         <a-button @click="handleUpdate">更新公告信息</a-button>
         <a-button @click="handleMute">单个聊天室禁言</a-button>
         <a-button @click="handleLeave">退出聊天室</a-button>
+        <a-button @click="handlekickChatroomMember">踢出直播间</a-button>
       </div>
       <div class="warpper">
         <div class="chatroom">
@@ -114,6 +117,32 @@ const handleLeave = async () => {
   chatroom.disconnect();
 };
 
+const handlekickChatroomMember = async () => {
+  const [error, result] = await chatroom.kickChatroomMember({
+    account: "3",
+  });
+  if (error) {
+    console.log(error.message);
+  }
+};
+
+// 发送图片文件
+const handleUpload = async () => {
+  const input = document.querySelector("#test");
+  if (input) {
+    chatroom.sendFile({
+      type: "image",
+      fileInput: input,
+      uploadprogress(obj) {},
+      beforesend(msg) {},
+      uploaddone(error, file) {},
+      done(error, msg) {
+        console.log(error, msg);
+      },
+    });
+  }
+};
+
 onBeforeMount(() => {
   const { token, account } = route.query;
   chatroom = IMSDk.Chatroom.getInstance({
@@ -149,6 +178,21 @@ onBeforeMount(() => {
   chatroom.addListener(Chatroom.EVENTS.memberExit, function (res) {
     console.log("memberExit", res);
     message.info(`[${res.attach.fromNick}] 离开聊天室`);
+  });
+
+  // 监听踢出消息
+  chatroom.addListener(Chatroom.EVENTS.kicked, function (res) {
+    message.error(res.message);
+  });
+
+  // 监听普通消息
+  chatroom.addListener(Chatroom.EVENTS.normal, function (res) {
+    console.log("normal message", res);
+  });
+
+  // 监听提示消息
+  chatroom.addListener(Chatroom.EVENTS.tip, function (res) {
+    console.log("tip message", res);
   });
 });
 </script>

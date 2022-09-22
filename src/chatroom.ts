@@ -4,6 +4,10 @@ import logger from "./utils/logger";
 
 // 聊天室
 interface NIMRoomchat {
+  kickChatroomMember(arg: {
+    account: string;
+    done(error: any, obj: any): void;
+  }): void;
   updateChatroomMemberTempMute(arg: {
     account: string;
     duration: number;
@@ -28,7 +32,7 @@ interface NIMRoomchat {
   ): Promise<[any, any]>;
   getChatroomMembers(
     options: MemberParamsType & {
-      done?: (error: any, obj: any) => void;
+      done?: (error: Error | null, obj: any) => void;
     }
   ): Promise<Member[]>;
   getChatroom(arg: {
@@ -200,7 +204,7 @@ export enum ChatroomMessageType {
 // 上传文件类型
 type UploadFileType = "image" | "audio" | "video" | "file";
 // 文件输入类型
-type FileInput = Blob | HTMLInputElement | string; // string base64
+type FileInput = Blob | Element | string; // string base64
 // 上传进度
 type Progress = {
   total: number;
@@ -213,10 +217,10 @@ type Progress = {
 interface UploadFileParams {
   type?: UploadFileType;
   fileInput: FileInput;
-  uploadprogress: (obj: Progress) => {};
-  uploaddone: (error: any, file: any) => {};
-  beforesend: (msg: Message) => {};
-  done: (error: any, msg: Message) => {};
+  uploadprogress: (obj: Progress) => void;
+  uploaddone: (error: Error | null, file: File) => void;
+  beforesend: (msg: Message) => void;
+  done: (error: Error | null, msg: Message) => void;
 }
 
 //
@@ -295,6 +299,7 @@ class Chatroom extends Eventemitter {
             const attach = msg.attach;
             this.emit(attach.type, msg);
           } else if (type === ChatroomMessageType.custom) {
+            // todo 分发自定义消息
             this.emit(ChatroomMessageType.custom, msg);
           } else {
             logger.info("未知消息");
@@ -320,21 +325,21 @@ class Chatroom extends Eventemitter {
   }
 
   // 获取聊天室信息
-  getChatroom(): Promise<[Error | null, ChatroomInfo]> {
-    return new Promise((resolve) => {
+  getChatroom() {
+    return new Promise<[Error | null, ChatroomInfo]>((resolve) => {
       this.chatroom.getChatroom({
-        done(error: Error, obj: ChatroomInfo) {
+        done(error: Error | null, obj: ChatroomInfo) {
           resolve([error, obj]);
         },
       });
     });
   }
   // 更新聊天室信息
-  updateChatroom(options: ChatroomUpdateInfo): Promise<[Error | null, any]> {
-    return new Promise((resolve) => {
+  updateChatroom(options: ChatroomUpdateInfo) {
+    return new Promise<[Error | null, any]>((resolve) => {
       this.chatroom.updateChatroom({
         ...options,
-        done(error: any, obj: any) {
+        done(error: Error | null, obj: any) {
           resolve([error, obj]);
         },
       });
@@ -375,7 +380,7 @@ class Chatroom extends Eventemitter {
     limit = 100,
     time = 0,
   }: MemberParamsType = {}) {
-    return new Promise<[any, any]>((resolve) => {
+    return new Promise<[Error | null, any]>((resolve) => {
       this.chatroom.getChatroomMembers({
         guest,
         limit,
@@ -394,13 +399,13 @@ class Chatroom extends Eventemitter {
     reverse = false,
     msgTypes = [],
   }: HistoryParamsType = {}) {
-    return new Promise<[any, any]>((resolve) => {
+    return new Promise<[Error | null, any]>((resolve) => {
       this.chatroom.getHistoryMsgs({
         timetag,
         limit,
         reverse,
         msgTypes,
-        done(error: any, obj: any) {
+        done(error: Error | null, obj: any) {
           resolve([error, obj]);
         },
       });
@@ -474,11 +479,16 @@ class Chatroom extends Eventemitter {
     account: string;
     isAdd: boolean;
   }) {
-    return new Promise<[any, any]>((resolve) => {
+    return new Promise<
+      [Error | null, { account: string; isAdd: boolean; custom: string }]
+    >((resolve) => {
       this.chatroom.markChatroomGaglist({
         account,
         isAdd,
-        done: (error: any, obj: any) => {
+        done: (
+          error: Error | null,
+          obj: { account: string; isAdd: boolean; custom: string }
+        ) => {
           resolve([error, obj]);
         },
       });
@@ -497,17 +507,34 @@ class Chatroom extends Eventemitter {
     needNotify?: boolean;
     custom?: string;
   }) {
-    return new Promise<[any, any]>((resolve) => {
+    return new Promise<[Error | null, any]>((resolve) => {
       this.chatroom.updateChatroomMemberTempMute({
         account,
         duration,
         needNotify,
         custom,
-        done(error: any, obj: any) {
+        done(error: Error | null, obj: any) {
           resolve([error, obj]);
         },
       });
     });
+  }
+
+  // 踢出聊天室
+  kickChatroomMember({ account }: { account: string }) {
+    return new Promise<[Error | null, { account: string; custom: string }]>(
+      (resolve) => {
+        this.chatroom.kickChatroomMember({
+          account,
+          done(
+            error: Error | null,
+            obj: { account: string; custom: string }
+          ): void {
+            resolve([error, obj]);
+          },
+        });
+      }
+    );
   }
 
   // 重新连接

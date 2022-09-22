@@ -49,16 +49,14 @@ const chatroom = IMSDk.Chatroom.getInstance({
 * 发送文本消息 ✅
 * 发送文件消息 ✅
 * 接收聊天室消息 ✅
-* 聊天室禁言 ✅
+* 聊天室禁言 (调用服务端接口)
 * 单个禁言 ✅
 * 临时禁言 ✅
-* 踢出(发、收)
-* 拉黑(发、收)
-* 上报观看时长
-* 记录发言次数
-* 快捷添加严禁词
-* 备注
-
+* 踢出(发、收) ✅ 
+* 更新学员备注 (调用服务端接口)
+* 拉黑(发、收) (自定义消息)
+* 上报观看时长 (调用服务端接口)
+* 记录发言次数 (调用服务端接口)
 
 ### 4.1 登录
 ```ts
@@ -149,7 +147,7 @@ const chatroom = IMSDk.Chatroom.getInstance({
         "announcement": "公告更新测试"
     },
     "needNotify": true,
-    "custom": "{\"announcement\":\"公告更新测试\"}",
+    "custom": "{\"announcement\":\"公告更新测试\"}",  // 自定义字段主要把修改内容传递给接收通知的端
     "antispamTag": {}
 }
 ```
@@ -188,9 +186,81 @@ chatroom.addListener(ChatroomNotifiyType.updateChatroom, function (res) {
 ```
 
 ### 4.4 查询成员列表
+
+* 请求
+
 ```ts
   const members = await chatroom.getAllChatroomMembers();
   console.log(members);
+```
+
+* 响应
+
+```json
+[
+    {
+        "chatroomId": "2302150639",
+        "account": "6",
+        "type": "manager",
+        "nick": "修改成员",
+        "avatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
+        "custom": "cunstom info",
+        "online": true,
+        "enterTime": 1663848190608,
+        "blacked": false,
+        "gaged": false,
+        "valid": true,
+        "updateTime": 1663817501136,
+        "tempMuted": false,
+        "tempMuteDuration": 0
+    },
+    {
+        "chatroomId": "2302150639",
+        "account": "3",
+        "type": "restricted",
+        "nick": "用户3",
+        "avatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
+        "custom": "",
+        "online": true,
+        "enterTime": 1663848019419,
+        "blacked": false,
+        "gaged": true,
+        "valid": true,
+        "updateTime": 1663778188178,
+        "tempMuted": false,
+        "tempMuteDuration": 0
+    },
+    {
+        "chatroomId": "2302150639",
+        "account": "1",
+        "type": "manager",
+        "nick": "管理员1",
+        "avatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
+        "custom": "",
+        "online": false,
+        "blacked": false,
+        "gaged": false,
+        "valid": true,
+        "updateTime": 1663333567529,
+        "tempMuted": false,
+        "tempMuteDuration": 0
+    },
+    {
+        "chatroomId": "2302150639",
+        "account": "0",
+        "type": "owner",
+        "nick": "管理员",
+        "avatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
+        "custom": "",
+        "online": false,
+        "blacked": false,
+        "gaged": false,
+        "valid": true,
+        "updateTime": 1663321877626,
+        "tempMuted": false,
+        "tempMuteDuration": 0
+    }
+]
 ```
 
 ### 4.5 分页获取成员列表
@@ -213,13 +283,89 @@ chatroom.addListener(ChatroomNotifiyType.updateChatroom, function (res) {
 
 
 ### 4.6 查询全部历史消息
+
+* 请求
+
 ```ts
 chatroom.getAllHistoryMsgs().then((res: any) => {
   history.value = res;
 });
 ```
+* 响应
+
+```json
+[
+    {
+        "chatroomId": "2302150639",
+        "idClient": "b82d4114588d6efb89e47f2b85b82393",
+        "from": "6",
+        "fromNick": "修改成员",
+        "fromAvatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
+        "fromCustom": "cunstom info",
+        "userUpdateTime": 1663839160317,
+        "fromClientType": "Web",
+        "time": 1663839167099,
+        "type": "image",
+        "text": "",
+        "resend": false,
+        "status": "success",
+        "file": {
+            "w": 432,
+            "h": 363,
+            "type": "PNG",
+            "size": 51512,
+            "url": "https://nim-nosdn.netease.im/MjYxNzY0Mjk=/bmltYV8xMDg1MTQyNjQzMzZfMTY2MzgzOTE2NjYzN18xYWQwZTQ5MS0yNGNkLTQzYzgtODhiOC1iNjBjMDE4YjZjOTE=?createTime=1663839167053",
+            "name": "截屏2022-09-21 16.54.48.png",
+            "ext": "png"
+        },
+        "flow": "out"
+    },
+    {
+        "chatroomId": "2302150639",
+        "idClient": "10a0d302-a093-4365-a906-113596ad1249",
+        "from": "0",
+        "fromNick": "管理员",
+        "fromAvatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
+        "custom": "扩展信息",
+        "fromClientType": "Server",
+        "time": 1663828031926,
+        "type": "text",
+        "text": "这是发送的消息",
+        "resend": false,
+        "status": "success",
+        "flow": "in"
+    },
+    {
+        "chatroomId": "2302150639",
+        "idClient": "7b7daf5d-2be7-4c2f-a228-5007c91700c0",
+        "from": "1",
+        "fromCustom": "",
+        "fromClientType": "Web",
+        "time": 1663818559398,
+        "type": "notification",
+        "text": "",
+        "resend": false,
+        "status": "success",
+        "attach": {
+            "type": "kickMember",
+            "from": "1",
+            "fromNick": "管理员1",
+            "to": [
+                "3"
+            ],
+            "toNick": [
+                "用户3"
+            ]
+        },
+        "flow": "in"
+    }
+]
+```
 
 ### 4.7 分页查询历史消息
+
+* 请求
+
 ```ts
 chatroom.getHistoryMsgs({
   timetag = Date.now(), // 默认值
@@ -228,6 +374,8 @@ chatroom.getHistoryMsgs({
 })
 ```
 
+* 参数
+
 | 参数      | 默认值 | 描述 |
 | ----------- | ----------- | ----------- |
 | timetag  | false   | 获取从 timetag 对应的时间点往前的若干条数据 |
@@ -235,6 +383,7 @@ chatroom.getHistoryMsgs({
 | msgTypes | [] |可选历史消息类型，默认为即获取全部消息类型|
 
 ### 4.8 进入聊天室
+
 ```ts
 // 成员进入
 chatroom.addListener(Chatroom.EVENTS.memberEnter, function (res) {
@@ -243,6 +392,7 @@ chatroom.addListener(Chatroom.EVENTS.memberEnter, function (res) {
 });
 ```
 ### 4.9 离开聊天室
+
 ```ts
 // 离开聊天
 chatroom.addListener(Chatroom.EVENTS.memberExit, function (res) {
@@ -250,8 +400,8 @@ chatroom.addListener(Chatroom.EVENTS.memberExit, function (res) {
   message.info(`[${res.attach.fromNick}] 离开聊天室`);
 });
 ```
-
 ### 4.10 发送文本消息
+
 ```ts
 const handleSend = async () => {
   const [error, msg] = await chatroom.sendText(content.value);
@@ -261,11 +411,17 @@ const handleSend = async () => {
   }
 };
 ```
+
 ### 4.11 发送文件消息
+
+```html
+<input id="test" type="file" />
+```
+
 ```ts
 chatroom.sendFile({
   type: "image", // "image" | "audio" | "video" | "file";
-  fileInput: fileInput, // blob | HTMLInputElement | base64
+  fileInput: document.getElementById('test'), // blob | HTMLInputElement | base64
   uploadprogress: (obj) => {},
   uploaddone: (error, file) => {},
   beforesend: (msg) => {},
@@ -273,30 +429,32 @@ chatroom.sendFile({
 });
 ```
 
+
 ### 4.12 接收聊天室消息
+
 #### 4.12.1 消息分类4大类
 
 | 事件名称      | 描述 |
 | ----------- | ----------- | 
 | normal      | 普通消息(text、image、audio、video、file、geo)| 
 | tip   | 提醒消息(如进入会话时出现的欢迎消息，或者会话命中敏感词后的提示消息等等) |
-| notification | 通知消息 |
-| custom| 自定义 |
+| notification | 通知消息(memberEnter(进入)、memberExit(离开)、gagMember(禁言)、ungagMember(解除禁言)、updateChatroom(聊天室信息更新)、addTempMute(临时禁言)、removeTempMute(移除临时禁言)、muteRoom(聊天室禁言)、unmuteRoom(移除聊天室禁言)) |
+| custom| 自定义(消息类型待定义) |
 
 #### 4.12.2 接收普通消息
 ```ts
 chatroom.addListener(Chatroom.EVENTS.normal, function(msg) {})
+chatroom.addListener(Chatroom.EVENTS.tip, function(msg) {})
 ```
 
 ### 4.13 聊天室禁言
 
 ```ts
-
 chatroom.addListener(Chatroom.EVENTS.muteRoom, function(msg) {}) // 聊天室被禁言
 chatroom.addListener(Chatroom.EVENTS.unmuteRoom, function(msg) {}) // 聊天室解除禁言
 ```
-
 ### 4.14 单禁言
+
 ```ts
 const [error, obj] = chatroom.markChatroomGaglist({
   account: "****",
@@ -324,12 +482,28 @@ const [error, obj] = chatroom.updateChatroomMemberTempMute({
 if(error === null) {
   console.log("禁言|取消禁言成功")
 }
-
 // 禁言
 chatroom.addListener(Chatroom.EVENTS.addTempMute, function(){})
 // 移除禁言
 chatroom.addListener(Chatroom.EVENTS.removeTempMute, function(){})
 ```
+
+### 4.16 踢出 (聊天室中踢出，刷新还可以继续进入，状态是瞬时的)
+
+```ts
+const handlekickChatroomMember = async () => {
+  const [error, result] = await chatroom.kickChatroomMember({
+    account: "3",
+  });
+  console.log(error, result); //  {account: '3', custom: ''}
+};
+
+// 学员端监听踢出消息
+chatroom.addListener(Chatroom.EVENTS.kicked, function (res) {
+  message.error(res.message);
+});
+```
+
 
 
 
