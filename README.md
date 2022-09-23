@@ -102,8 +102,8 @@ const chatroom = IMSDk.Chatroom.getInstance({
   "updateTime": 1663741386352,
   "queuelevel": "1",
   "creator": "0",
-  "onlineMemberNum": 3,
-  "mute": false,
+  "onlineMemberNum": 3, // 在线人数
+  "mute": false, // 聊天室禁言中，只有管理人员可以发消息
   "broadcastUrl": ""
 }
 ```
@@ -199,20 +199,20 @@ chatroom.addListener(ChatroomNotifiyType.updateChatroom, function (res) {
 ```json
 [
     {
-        "chatroomId": "2302150639",
-        "account": "6",
-        "type": "manager",
-        "nick": "修改成员",
-        "avatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg",
-        "custom": "cunstom info",
-        "online": true,
-        "enterTime": 1663848190608,
-        "blacked": false,
-        "gaged": false,
-        "valid": true,
-        "updateTime": 1663817501136,
-        "tempMuted": false,
-        "tempMuteDuration": 0
+        "chatroomId": "2302150639", // 房间号
+        "account": "6", // 账号
+        "type": "manager", // 类型 owner 房主 、manager 管理员、restricted 受限制(被拉黑或禁言) 、common 普通用户、guest 游客
+        "nick": "修改成员", // 昵称
+        "avatar": "https://ksimage.mashibing.com/132643d814514734bf0d5e4eb63e0e63.jpg", // 头像
+        "custom": "cunstom info", 
+        "online": true, // 在线状态
+        "enterTime": 1663848190608, // 进入时间
+        "blacked": false, // 黑名单
+        "gaged": false, // 禁言
+        "valid": true, // 账号有效性
+        "updateTime": 1663817501136, // 更新时间
+        "tempMuted": false, // 临时禁言
+        "tempMuteDuration": 0 // 临时禁言时长(单位秒)
     },
     {
         "chatroomId": "2302150639",

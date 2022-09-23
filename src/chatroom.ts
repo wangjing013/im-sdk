@@ -4,6 +4,7 @@ import logger from "./utils/logger";
 
 // 聊天室
 interface NIMRoomchat {
+  getChatroomMembersInfo(arg: { accounts: string[]; done(error: Error | null, obj: any): void; }): void;
   kickChatroomMember(arg: {
     account: string;
     done(error: any, obj: any): void;
@@ -67,8 +68,8 @@ interface Options {
   chatroomNick: string; // 聊天室昵称
   chatroomAvatar: string; // 聊天室头像
   nosScene?: string; // nos存储场景 默认 chatroom
-  chatroomCustom?: object; // 扩展字段, 设置了之后, 通过获取聊天室成员列表获取的聊天室成员信息会包含此字段
-  chatroomEnterCustom?: object; // 扩展字段, 如果填了, 聊天室成员收到的聊天室通知消息的 attach.custom 的值为此字段
+  chatroomCustom?: string; // 扩展字段, 设置了之后, 通过获取聊天室成员列表获取的聊天室成员信息会包含此字段
+  chatroomEnterCustom?: string; // 扩展字段, 如果填了, 聊天室成员收到的聊天室通知消息的 attach.custom 的值为此字段
   onconnect?: (obj: ConnectResult) => void;
   onerror?: (error: any) => void;
   onwillreconnect?: (obj: { duration: number; retryCount: number }) => void;
@@ -249,9 +250,19 @@ export enum ChatroomNotifiyType {
 // 自定义事件
 export enum CustomEventType {
   normal = "normal",
-  loginFail = "loginFail",
-  kicked = "kicked",
+  loginSuccess = "loginSuccess",
+  loginFail = "loginFail"
 }
+
+// 错误原因
+export const ErrorReason = {
+  302: "账号或者密码错误",
+  chatroomClosed: "聊天室关闭了",
+  managerKick: "被管理员踢出",
+  samePlatformKick: "不允许同一个帐号重复登录同一个聊天室"
+};
+
+console.log();
 
 class Chatroom extends Eventemitter {
   static instance: Chatroom;
@@ -265,21 +276,19 @@ class Chatroom extends Eventemitter {
     super();
     this.chatroom = NIM.Chatroom.getInstance({
       ...options,
+      onconnect: (obj: ConnectResult) => {
+        this.emit(CustomEventType.loginSuccess, obj);
+      },
+      onwillreconnect(obj: { duration: number; retryCount: number }) { },
       ondisconnect: (error: Error) => {
-        if (error) {
-          switch (error.code) {
-            case 302:
-              this.emit(CustomEventType.loginFail, error);
-              logger.error(error.message);
-              break;
-            case "kicked":
-              this.emit(CustomEventType.kicked, error);
-              logger.error(error.message);
-              break;
-            default:
-              break;
-          }
+        if (error.code === 302) {
+          this.emit(CustomEventType.loginFail, error);
+        } else if (error.code === "kicked") {
+          logger.error(ErrorReason[error.reason!]);
         }
+      },
+      onerror(error: Error) {
+        logger.error(`状态:${error.code} 错误原因:${error.message}`);
       },
       onmsgs: (msgs: Message[]) => {
         msgs.forEach((msg: Message) => {
@@ -529,6 +538,23 @@ class Chatroom extends Eventemitter {
           done(
             error: Error | null,
             obj: { account: string; custom: string }
+          ): void {
+            resolve([error, obj]);
+          },
+        });
+      }
+    );
+  }
+
+  // 获取成员信息
+  getChatroomMembersInfo({ accounts }: { accounts: string[] }) {
+    return new Promise<[Error | null, any]>(
+      (resolve) => {
+        this.chatroom.getChatroomMembersInfo({
+          accounts,
+          done(
+            error: Error | null,
+            obj: any
           ): void {
             resolve([error, obj]);
           },

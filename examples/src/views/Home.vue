@@ -16,7 +16,7 @@
           <div class="chatroom-main">
             <div class="members">
               <div v-for="item of members" :key="item.account">
-                {{ item.nick }}
+                {{ item.nick }}-{{ item.online ? "在线" : "离线" }}
               </div>
             </div>
             <div class="chat-warpper">
@@ -64,7 +64,7 @@ import IMSDk from "../../../src/index";
 
 const route = useRoute();
 const content = ref("");
-const history = ref<any>([]);
+const history = ref<Message[]>([]);
 const members = ref<Member[]>([]);
 let chatroom: Chatroom;
 
@@ -100,10 +100,7 @@ const handleUpdate = async () => {
       announcement: "公告更新测试",
     }),
   });
-  if (error === null) {
-    console.log(obj);
-    message.success("公告更新成功");
-  }
+  console.log(error, obj);
 };
 
 const handleMute = async () => {
@@ -113,6 +110,7 @@ const handleMute = async () => {
   });
   console.log(error, result);
 };
+
 const handleLeave = async () => {
   chatroom.disconnect();
 };
@@ -146,26 +144,35 @@ const handleUpload = async () => {
 onBeforeMount(() => {
   const { token, account } = route.query;
   chatroom = IMSDk.Chatroom.getInstance({
-    account: account as string, // 账号
-    token: token as string, // 凭证
-    appKey: "678ddcd03a3225cd7932d2ecef09d246", // appkey
-    chatroomId: "2302150639", // 聊天室
+    account: account as string,
+    token: token as string,
+    appKey: "678ddcd03a3225cd7932d2ecef09d246",
+    chatroomId: "2302150639",
     chatroomAddresses: [
       "chatweblink12.netease.im:443",
       "chatweblink11.netease.im:443",
-    ], // 聊天室地址
+    ],
     chatroomNick: "", // 昵称
     chatroomAvatar: "", // 头像
-    onconnect(obj) {
-      console.log("聊天室:", obj.chatroom);
-      console.log("登录账号:", obj.member);
-      getHistoryMsgs();
-    },
+    chatroomEnterCustom: JSON.stringify({
+      avatar: "https://joeschmoe.io/api/v1/random",
+    }),
+  });
+
+  // 登录成功
+  chatroom.addListener(Chatroom.EVENTS.loginSuccess, function (obj) {
+    console.log("聊天室:", obj.chatroom);
+    console.log("登录账号:", obj.member);
+    getHistoryMsgs();
+    getAllChatroomMembers();
   });
 
   // 成员进入
-  chatroom.addListener(Chatroom.EVENTS.memberEnter, function (res) {
-    console.log("memberEnter", res);
+  chatroom.addListener(Chatroom.EVENTS.memberEnter, async function (res) {
+    const [error, obj] = await chatroom.getChatroomMembersInfo({
+      accounts: [res.from],
+    });
+    console.log(error, obj);
     message.info(`[${res.attach.fromNick}] 进入聊天室`);
   });
 
@@ -180,14 +187,10 @@ onBeforeMount(() => {
     message.info(`[${res.attach.fromNick}] 离开聊天室`);
   });
 
-  // 监听踢出消息
-  chatroom.addListener(Chatroom.EVENTS.kicked, function (res) {
-    message.error(res.message);
-  });
-
   // 监听普通消息
   chatroom.addListener(Chatroom.EVENTS.normal, function (res) {
     console.log("normal message", res);
+    history.value.unshift(res);
   });
 
   // 监听提示消息
